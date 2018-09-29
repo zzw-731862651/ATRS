@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="UTF-8" />
+		<title>Document</title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link rel="stylesheet" type="text/css" href="css/mui.css" />
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+			<h1 class="mui-title">用户注册</h1>
+		</header>
+		<div class="mui-content">
+			<form class="mui-input-group" style="margin-top: 15px;">
+				<div class="mui-input-row">
+					<label>用户名</label>
+					<input type="text" class="mui-input-clear" placeholder="请输入用户名" id="username">
+				</div>
+				<div class="mui-input-row">
+					<label>密码</label>
+					<input type="password" class="mui-input-password" placeholder="请输入密码" id="pwd">
+				</div>
+				<div class="mui-input-row">
+					<label>确认密码</label>
+					<input type="password" class="mui-input-password" placeholder="请输入密码" id="repwd">
+				</div>
+				<div class="mui-input-row">
+					<label>昵称</label>
+					<input type="text" class="mui-input-clear" placeholder="请输入昵称" id="nickname">
+				</div>
+				<div class="mui-input-row mui-radio mui-left">
+					<label>男</label>
+					<input name="gender" type="radio" value="1">
+				</div>
+				<div class="mui-input-row mui-radio mui-left">
+					<label>女</label>
+					<input name="gender" type="radio" value="2" checked>
+				</div>
+				<div class="mui-input-row">
+					<label>年龄</label>
+					<input type="text" class="mui-input-clear" placeholder="请输入年龄" id="age">
+				</div>
+				<div class="mui-input-row">
+					<label>电话</label>
+					<input type="text" class="mui-input-clear" placeholder="请输入电话" id="phone">
+				</div>
+				<div class="mui-button-row">
+					<button type="button" class="mui-btn mui-btn-primary" id="reg">注册</button>
+					<button type="button" class="mui-btn mui-btn-danger mui-action-back">返回</button>
+				</div>
+			</form>
+		</div>
+	</body>
+
+	<script src="js/mui.js" type="text/javascript" charset="utf-8"></script>
+	<script src="js/md5.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		mui.init()
+		document.getElementById("reg").addEventListener("tap", function() {
+			var gender_list = document.getElementsByName("gender")
+
+			var pwd = document.getElementById("pwd").value;
+			var repwd = document.getElementById("repwd").value;
+			if(pwd != repwd) {
+				mui.toast("两次密码输入不一致")
+				return
+			}
+
+			pwd = hex_md5(pwd);
+
+			var username = document.getElementById("username").value;
+			var age = document.getElementById("age").value;
+			var nickname = document.getElementById("nickname").value;
+			var phone = document.getElementById("phone").value;
+
+			var gender = null;
+			for(var i = 0; i < gender_list.length; i++) {
+				if(gender_list[i].checked) {
+					gender = gender_list[i].value;
+				}
+			}
+
+			mui.post(
+				window.serv + "/reg", {
+					username: username,
+					password: pwd,
+					gender: gender,
+					age: age,
+					nickname: nickname,
+					phone: phone
+				},
+				function(data){
+					console.log(JSON.stringify(data))
+				}
+			)
+
+		})
+	</script>
+
+</html>

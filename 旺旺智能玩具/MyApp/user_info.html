@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="UTF-8" />
+		<title>Document</title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link rel="stylesheet" type="text/css" href="css/mui.css" />
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav">
+			<h1 class="mui-title">用户信息</h1>
+		</header>
+		<div class="mui-content">
+			<div class="mui-row" style="text-align: center;">
+				<img src="" id="avatar" / style="width: 250px;height: 250px; border-radius: 100%;">
+			</div>
+			<ul class="mui-table-view">
+				<li class="mui-table-view-cell">用户名 ：<span id="username"></span></li>
+				<li class="mui-table-view-cell">昵称:<span id="nickname"></span></li>
+			</ul>
+			<ul class="mui-table-view">
+				<li class="mui-table-view-cell" id="toy_manager"><i class="mui-icon mui-icon-qq"></i>管理我的玩具</li>
+
+			</ul>
+
+			<button type="button" class="mui-btn mui-btn-blue mui-btn-block" id="logout">退出登陆</button>
+		</div>
+
+	</body>
+	<script src="js/mui.js" type="text/javascript" charset="utf-8"></script>
+	<script type="text/javascript">
+		mui.init()
+		mui.back = function() {};
+		mui.plusReady(function() {
+			var Sdata = plus.webview.currentWebview();
+			mui.post(
+				window.serv + "/user_info", {
+					user_id: Sdata.user_id
+				},
+				function(data) {
+					console.log(JSON.stringify(data));
+					document.getElementById("username").innerText = data.username;
+					document.getElementById("nickname").innerText = data.nickname;
+					document.getElementById("avatar").src = "avatar/" + data.avatar;
+				}
+			)
+		})
+
+		document.getElementById("logout").addEventListener("tap", function() {
+			plus.storage.removeItem("user")
+			mui.openWindow({
+				url: "login.html",
+				id: "login.html",
+				styles: window.styles
+			})
+		})
+
+		document.getElementById("toy_manager").addEventListener("tap", function() {
+			mui.openWindow({
+				url: "toy_manager.html",
+				id: "toy_manager.html",
+				styles: window.styles,
+			})
+		})
+	</script>
+
+</html>

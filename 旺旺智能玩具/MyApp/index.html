@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<title></title>
+		<script src="js/mui.js"></script>
+		<link href="css/mui.min.css" rel="stylesheet" />
+	</head>
+
+	<body>
+		<nav class="mui-bar mui-bar-tab">
+			<a class="mui-tab-item mui-active" id="index">
+				<span class="mui-icon mui-icon-home"></span>
+				<span class="mui-tab-label">首页</span>
+			</a>
+			<a class="mui-tab-item" id="message">
+				<span class="mui-icon mui-icon-chat">
+					<span class="mui-badge mui-badge-red" id="msg_count">0</span>
+				</span>
+				<span class="mui-tab-label">消息</span>
+			</a>
+			<a class="mui-tab-item" id="req">
+				<span class="mui-icon mui-icon-email"></span>
+				<span class="mui-tab-label">好友请求</span>
+			</a>
+			<a class="mui-tab-item" id="login">
+				<span class="mui-icon mui-icon-gear"></span>
+				<span class="mui-tab-label">设置</span>
+			</a>
+		</nav>
+	</body>
+	<script type="text/javascript" charset="utf-8">
+		var ws = null;
+		var msg_data = null;
+		//		ws = new WebSocket("ws://192.168.11.34:9528/app/"+plus.storage.getItem("user"))
+		mui.init({
+			subpages: [{
+				url: "main.html",
+				id: "main.html",
+				styles: window.styles
+			}]
+		});
+		mui.plusReady(function() {
+			console.log(JSON.stringify(plus.webview.currentWebview()))
+			if(plus.storage.getItem("user")) {
+				ws = new WebSocket(window.ws_serv + "/app/" + plus.storage.getItem("user"))
+
+				mui.post(
+					window.serv + "/get_msg_list", {
+						user_id: plus.storage.getItem("user")
+					},
+					function(data) {
+						msg_data = data.data;
+						document.getElementById("msg_count").innerText = msg_data.count;
+					}
+				);
+
+				ws.onmessage = function(data) {
+
+					console.log(data.data);
+					var msg = JSON.parse(data.data);
+					var chat = plus.webview.getWebviewById("chat.html");
+					mui.fire(chat, "new_msg", {
+						data: msg
+					});
+					var msg_count = document.getElementById("msg_count");
+					msg_count.innerText = parseInt(msg_count.innerText) + 1;
+					msg_data[msg.from_user]++;
+				};
+
+				ws.onclose = function() {
+					window.location.reload();
+				}
+			}
+		});
+
+		document.getElementById("message").addEventListener("tap", function() {
+			mui.openWindow({
+				url: "message.html",
+				id: "message.html",
+				styles: window.styles,
+				extras: {
+					user_id: plus.storage.getItem("user"),
+					msg_data: msg_data
+				}
+			})
+		})
+
+		document.getElementById("index").addEventListener("tap", function() {
+			mui.openWindow({
+				url: "main.html",
+				id: "main.html",
+				styles: window.styles
+			})
+		})
+
+		document.getElementById("req").addEventListener("tap", function() {
+			mui.openWindow({
+				url: "req_list.html",
+				id: "req_list.html",
+				styles: window.styles
+			})
+		})
+
+		document.getElementById("login").addEventListener("tap", function() {
+			if(plus.storage.getItem("user")) {
+				mui.openWindow({
+					url: "user_info.html",
+					id: "user_info.html",
+					styles: window.styles,
+					extras: {
+						user_id: plus.storage.getItem("user")
+					}
+				})
+			} else {
+				mui.openWindow({
+					url: "login.html",
+					id: "login.html",
+					styles: window.styles
+				})
+			}
+
+		})
+
+		document.addEventListener("login", function(data) {
+			mui.toast("index" + data.detail.msg);
+		})
+
+		document.addEventListener("send_music", function(data) {
+			var music_name = data.detail.music_name;
+			var toy_id = data.detail.toy_id;
+
+			send_str = {
+				data: music_name,
+				to_user: toy_id,
+				msg_type: "music",
+			}
+
+			ws.send(JSON.stringify(send_str))
+		})
+
+		document.addEventListener("send_msg", function(data) {
+			var filename = data.detail.filename
+			var to_user = data.detail.to_user
+			send_str = {
+				to_user: to_user
+			}
+			ws.send(JSON.stringify(send_str))
+			plus.io.resolveLocalFileSystemURL(filename, function(entry) {
+				// 可通过entry对象操作test.html文件 
+				entry.file(function(file) {
+					var fileReader = new plus.io.FileReader();
+
+					//						alert("getFile:" + JSON.stringify(file));
+					fileReader.readAsDataURL(file, 'utf-8');
+					fileReader.onloadend = function(evt) {
+						console.log(evt.target.result);
+						var b = dataURLtoBlob(evt.target.result);
+						ws.send(b);
+
+					}
+					//						alert(file.size + '--' + file.name)
+				});
+			});
+
+		})
+
+		document.addEventListener("cut_msg_count", function(data) {
+			var msg_count = document.getElementById("msg_count")
+			var cut = parseInt(data.detail.cut);
+			var count = parseInt(msg_count.innerText);
+			msg_count.innerText = count - cut;
+		})
+
+		function dataURLtoBlob(dataurl) {
+			var arr = dataurl.split(','),
+				mime = arr[0].match(/:(.*?);/)[1],
+				bstr = atob(arr[1]),
+				n = bstr.length,
+				u8arr = new Uint8Array(n);
+			while(n--) {
+				u8arr[n] = bstr.charCodeAt(n);
+			}
+			var a = new Blob([u8arr], {
+				type: mime
+			});
+			return a
+		}
+	</script>
+
+</html>

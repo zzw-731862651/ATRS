@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+</head>
+<body>
+<div style="text-align: center">
+<h1>旺旺智能玩具音频控制平台</h1>
+</div>
+<div style="text-align: center">
+&nbsp;&nbsp;&nbsp;&nbsp;
+<audio src="" autoplay controls id="player"></audio>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" id="device_id" style="width: 300px">
+
+<button onclick="start_toy()" class="btn btn-success">输入设备id,点击开机</button>
+
+<br>
+<br>
+<h4>第一步：</h4>
+<div>点击按钮讲话（我要给爸爸发消息或者随意讲其他）：
+<button onclick="start_reco()" class="btn btn-success">开始讲话</button>
+</div>
+<br>
+<div>点击发送上面说的（点击发送出上面讲的消息内荣）：
+<button onclick="stop_reco()" class="btn btn-success">发送语音</button>
+</div>
+<br>
+<h4>第二步：</h4>
+<div>耐心等待系统语音提示（根据提示，发送相关内容）：
+<button onclick="start_reco()" class="btn btn-success">录制消息</button>
+</div>
+<span id="to_user"></span>
+<span id="user_type"></span>
+<br>
+<div>收到提示以后，点击这个按钮就可以发送录制的语音：
+<button onclick="send_reco()" class="btn btn-success">发送消息</button>
+</div>
+<br>
+<h4>获取手机app发过来的消息：</h4>
+<div>点击这个按钮，可获取手机app端发过来的语音消息 ：
+<button onclick="recv_msg()" class="btn btn-success">收取消息</button>
+</div>
+</div>
+</body>
+<script src="/static/Recorder.js"></script>
+<script src="/static/jQuery3.1.1.js"></script>
+<script type="application/javascript">
+    var serv = "http://192.168.11.31:9527";
+    var ws_serv = "ws://192.168.11.31:9528";
+
+    var get_music = serv + "/get_audio/";
+    var get_chat = serv + "/get_chat/";
+    var ws = null;
+    var reco = null;
+    var audio_context = new AudioContext();
+    navigator.getUserMedia = (navigator.getUserMedia ||
+        navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia ||
+        navigator.msGetUserMedia);
+
+    navigator.getUserMedia({audio: true}, create_stream, function (err) {
+        console.log(err)
+    });
+
+    function create_stream(user_media) {
+        var stream_input = audio_context.createMediaStreamSource(user_media);
+        reco = new Recorder(stream_input);
+
+    }
+
+    function start_reco() {
+        reco.record();
+    }
+
+    function stop_reco() {
+        reco.stop();
+        get_audio();
+        reco.clear();
+    }
+
+    function send_reco() {
+        reco.stop();
+        send_audio();
+        reco.clear();
+    }
+
+    function send_audio() {
+        var to_user = document.getElementById("to_user").innerText;
+        var user_type = document.getElementById("user_type").innerText;
+        var send_str = {
+            "to_user": to_user,
+            "user_type":user_type
+        };
+        ws.send(JSON.stringify(send_str));
+        reco.exportWAV(function (wav_file) {
+            ws.send(wav_file);
+        })
+    }
+
+    function get_audio() {
+
+        var send_str = {
+            "to_user": toy_id,
+            "msg_type": "ai"
+        };
+        ws.send(JSON.stringify(send_str));
+        reco.exportWAV(function (wav_file) {
+            ws.send(wav_file);
+        })
+    }
+
+    var toy_id = null;
+
+    function start_toy() {
+        var device_id = document.getElementById("device_id").value;
+
+        $.post(
+            serv + "/device_toy_id",
+            {device_id: device_id},
+            function (data) {
+                toy_id = data.data.toy_id;
+                document.getElementById("player").src = get_music + data.data.audio;
+                if (toy_id) {
+                    ws = new WebSocket(ws_serv + "/toy/" + toy_id);
+                    ws.onmessage = function (data) {
+                        // console.log(get_file + data.data);
+                        var content = JSON.parse(data.data);
+
+                        if (content.msg_type == "chat") {
+                            document.getElementById("player").src = get_chat + content.data;
+                            document.getElementById("to_user").innerText = content.from_user;
+                            document.getElementById("user_type").innerText = content.user_type;
+                            console.log(content.from_user + "给你发送了一条消息");
+                        }
+                        if (content.msg_type == "music") {
+                            document.getElementById("player").src = get_music + content.data;
+                            console.log(content.from_user + "给你点播了歌儿");
+                        }
+
+                    }
+
+                    ws.onclose = function () {
+                        window.location.reload();
+                    }
+                }
+            }, "json"
+        );
+    }
+
+    function recv_msg() {
+        var to_user = document.getElementById("to_user").innerText;
+        var player = document.getElementById("player");
+        $.post(
+            serv + "/get_msg",
+            {user_id: toy_id, sender: to_user},
+            function (data) {
+                var msg = data.data.shift();
+                document.getElementById("to_user").innerText = msg.sender;
+                player.src = get_chat + msg.msg;
+                player.onended = function () {
+                    if(data.data.length > 0){
+                       player.src = get_chat + data.data.shift().msg;
+                    }else{
+                       return null;
+                    }
+                }
+            }, "json"
+        )
+    }
+
+</script>
+</html>
